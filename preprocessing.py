@@ -1,5 +1,5 @@
 import numpy as np
-import keras as K
+from keras import backend as K
 import keras.preprocessing.image as kpi
 from keras.applications import vgg19
 
@@ -8,8 +8,8 @@ def output_image_dimensions(width, height, desired_height=400):
     return desired_height, int(width * desired_height / height)
 
 
-def images_to_tensors(information_image, style_image):
-    return K.variable(information_image), K.variable(style_image)
+def images_to_tensors(content_image, style_image):
+    return K.variable(content_image), K.variable(style_image)
 
 
 def preprocess_image(image):
@@ -18,18 +18,16 @@ def preprocess_image(image):
     return vgg19.preprocess_input(image)
 
 
-def preprocess_images(information_image_path, style_image_path, desired_height=400):
-    base_width, base_height = kpi.load_img(information_image_path).size
+def preprocess_images(content_image_path, style_image_path, desired_height=400):
+    base_width, base_height = kpi.load_img(content_image_path).size
     height, width = output_image_dimensions(base_width, base_height, desired_height)
     style_image = kpi.load_img(style_image_path, target_size=(height, width))
-    information_image = kpi.load_img(information_image_path, target_size=(height, width))
+    content_image = kpi.load_img(content_image_path, target_size=(height, width))
 
-    information_image = preprocess_image(information_image)
+    content_image = preprocess_image(content_image)
     style_image = preprocess_image(style_image)
 
-    information_image, style_image = images_to_tensors(information_image, style_image)
-
-    return information_image, style_image, height, width
+    return content_image, style_image, height, width
 
 
 def deprocess_image(output_matrix, height, width):

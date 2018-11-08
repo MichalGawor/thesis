@@ -1,15 +1,14 @@
-from __future__ import print_function
-from keras.preprocessing.image import load_img, save_img, img_to_array
+import argparse
+from keras.applications import vgg19
+from keras import backend as K
+from keras.preprocessing.image import save_img
 import numpy as np
 from scipy.optimize import fmin_l_bfgs_b
 import time
-import argparse
 
-from keras.applications import vgg19
-from keras import backend as K
+from preprocessing import images_to_tensors, preprocess_images, deprocess_image
+from utils import content_loss, style_loss, total_loss
 
-from preprocessing import *
-from utils import *
 
 parser = argparse.ArgumentParser(description='Neural style transfer with Keras.')
 parser.add_argument('content_image_path', metavar='base', type=str,
@@ -37,24 +36,18 @@ total_variation_weight = args.tv_weight
 style_weight = args.style_weight
 content_weight = args.content_weight
 
-# ____________________OUTPUT SIZE____________________
-width, height = load_img(CONTENT_IMAGE_PATH).size
-img_height = 400
-img_width = int(width * height / height)
-
 
 # ____________________PREPARE IMAGES____________________
-content_image = K.variable(preprocess_image(STYLE_IMAGE_PATH))
-style_image = K.variable(preprocess_image(STYLE_IMAGE_PATH))
+content_image, style_image, img_height, img_width = preprocess_images(CONTENT_IMAGE_PATH, STYLE_IMAGE_PATH)
+content_image_tensor, style_image_tensor = images_to_tensors(content_image, style_image)
+
 alternated_image = K.placeholder((1, img_height, img_width, 3))
-input_tensor = K.concatenate([content_image,
-                              style_image,
-                              alternated_image], axis=0)
+
+input_tensor = K.concatenate([content_image, style_image, alternated_image], axis=0)
 
 
 # ____________________LOAD MODEL____________________
-model = vgg19.VGG19(input_tensor=input_tensor,
-                    weights='imagenet', include_top=False)
+model = vgg19.VGG19(input_tensor=input_tensor, weights='imagenet', include_top=False)
 print('VGG19 model has been successfully loaded.')
 
 
@@ -71,9 +64,7 @@ combination_features = layer_features[2, :, :, :]
 loss += content_weight * content_loss(content_features,
                                       combination_features)
 
-feature_layers = ['block1_conv1', 'block2_conv1',
-                  'block3_conv1', 'block4_conv1',
-                  'block5_conv1']
+feature_layers = ['block1_conv1', 'block2_conv1', 'block3_conv1', 'block4_conv1', 'block5_conv1']
 for layer_name in feature_layers:
     layer_features = outputs_dict[layer_name]
     style_features = layer_features[1, :, :, :]
@@ -82,30 +73,27 @@ for layer_name in feature_layers:
     loss += (style_weight / len(feature_layers)) * _style_loss
 loss += total_variation_weight * total_loss(alternated_image, img_height, img_width)
 
-# get the gradients of the generated image wrt the loss
 grads = K.gradients(loss, alternated_image)
 
 outputs = [loss]
-if isinstance(grads, (list, tuple)):
-    outputs += grads
-else:
-    outputs.append(grads)
+outputs += grads
 
-f_outputs = K.function([alternated_image], outputs)
+loss_function_outputs = K.function([alternated_image], outputs)
 
 
-def eval_loss_and_grads(f_outputs, x, height, width):
+def eval_loss_and_grads(loss_function_outputs, x, height, width):
     x = x.reshape((1, height, width, 3))
-    outs = f_outputs([x])
-    loss_value = outs[0]
-    if len(outs[1:]) == 1:
-        grad_values = outs[1].flatten().astype('float64')
-    else:
-        grad_values = np.array(outs[1:]).flatten().astype('float64')
+    outputs = loss_function_outputs([x])
+    loss_value = outputs[0]
+    # if len(outputs[1:]) == 1:
+    grad_values = outputs[1].flatten().astype('float64')
+    # else:
+    #    grad_values = np.array(outputs[1:]).flatten().astype('float64')
     return loss_value, grad_values
 
 
 # ____________________PARALLEL CALCULATION OF LOSS AND GRAD FOR OPTIMIZER____________________
+# https://github.com/keras-team/keras/blob/master/examples/neural_style_transfer.py
 class Evaluator(object):
     def __init__(self):
         self.loss_value = None
@@ -113,7 +101,7 @@ class Evaluator(object):
 
     def loss(self, x):
         assert self.loss_value is None
-        loss_value, grad_values = eval_loss_and_grads(x)
+        loss_value, grad_values = eval_loss_and_grads(loss_function_outputs, x, img_height, img_width)
         self.loss_value = loss_value
         self.grad_values = grad_values
         return self.loss_value
@@ -125,16 +113,16 @@ class Evaluator(object):
         self.grad_values = None
         return grad_values
 
+
 evaluator = Evaluator()
 
 
 # ____________________APPLY ALTERNATION____________________
-x = preprocess_image(CONTENT_IMAGE_PATH)
 
 for i in range(iterations):
     print('Start of iteration', i)
     start_time = time.time()
-    x, min_val, info = fmin_l_bfgs_b(evaluator.loss, x.flatten(),
+    x, min_val, info = fmin_l_bfgs_b(evaluator.loss, content_image.flatten(),
                                      fprime=evaluator.grads, maxfun=20)
     print('Current loss value:', min_val)
     # save current generated image
