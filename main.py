@@ -1,14 +1,11 @@
 import argparse
 from keras.applications import vgg19
 from keras import backend as K
-from keras.preprocessing.image import save_img
+import keras.preprocessing.image as kpi
 import numpy as np
 from scipy.optimize import fmin_l_bfgs_b
 import time
 import os
-
-from preprocessing import images_to_tensors, preprocess_images, deprocess_image
-from utils import content_loss, style_loss, total_loss
 
 
 parser = argparse.ArgumentParser(description='ArtificalArt.')
@@ -39,6 +36,71 @@ style_weight = args.sw
 content_weight = args.cw
 
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
+
+
+def gram_matrix(features):
+    feature_map = K.batch_flatten(K.permute_dimensions(features, (2, 0, 1)))
+    return K.dot(feature_map, K.transpose(feature_map))
+
+
+def content_loss(content, alternation):
+    return K.sum(K.square(alternation - content))
+
+
+def style_loss(style, alternation, height, width):
+    G = gram_matrix(style)
+    A = gram_matrix(alternation)
+    return K.sum(K.square(G - A)) / (4.0 * (3.0**2) * (width * height)**2)
+
+
+def total_loss(features, height, width):
+    a = K.square(features[:, :height - 1, :width - 1, :] - features[:, 1:, :width - 1, :])
+    b = K.square(features[:, :height - 1, :width - 1, :] - features[:, :height - 1, 1:, :])
+    return K.sum(K.pow(a + b, 1.25))
+
+
+def output_image_dimensions(width, height, desired_height):
+    if desired_height > 0:
+        return desired_height, int(width * desired_height / height)
+    else:
+        return height, width
+
+
+def images_to_tensors(content_image, style_image):
+    return K.variable(content_image), K.variable(style_image)
+
+
+def preprocess_image(image):
+    image = kpi.img_to_array(image)
+    image = np.expand_dims(image, axis=0)
+    return vgg19.preprocess_input(image)
+
+
+def preprocess_images(content_image_path, style_image_path, desired_height=0):
+    base_width, base_height = kpi.load_img(content_image_path).size
+    height, width = output_image_dimensions(base_width, base_height, desired_height)
+    style_image = kpi.load_img(style_image_path, target_size=(height, width))
+    content_image = kpi.load_img(content_image_path, target_size=(height, width))
+
+    content_image = preprocess_image(content_image)
+    style_image = preprocess_image(style_image)
+
+    return content_image, style_image, height, width
+
+
+def deprocess_image(output_matrix, height, width):
+    output_matrix = output_matrix.reshape((height, width, 3))
+    output_matrix[:, :, 0] += 103.939
+    output_matrix[:, :, 1] += 116.779
+    output_matrix[:, :, 2] += 123.68
+    output_matrix = output_matrix[:, :, ::-1]
+    output_matrix = np.clip(output_matrix, 0, 255).astype('uint8')
+    return output_matrix
+
+
+
+
+
 
 # ____________________PREPARE IMAGES____________________
 content_image, style_image, img_height, img_width = preprocess_images(CONTENT_IMAGE_PATH, STYLE_IMAGE_PATH, 400)
@@ -134,7 +196,7 @@ for i in range(iterations):
     if i % 10 == 0:
         img = deprocess_image(x.copy(), img_height, img_width)  
         fname = str(content_weight) + '_' + str(style_weight) + '_at_iteration_%d.png' % i
-        save_img(fname, img)
+        kpi.save_img(fname, img)
         print('Image saved as', fname)
     end_time = time.time()
     print('Iteration %d completed in %ds' % (i, end_time - start_time))
