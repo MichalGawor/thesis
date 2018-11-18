@@ -35,9 +35,9 @@ def preprocess_images(content_image_path, style_image_path, desired_height=0):
 
 def deprocess_image(output_matrix, height, width):
     output_matrix = output_matrix.reshape((height, width, 3))
-    output_matrix[:, :, 0] += 123.68
+    output_matrix[:, :, 0] += 103.939
     output_matrix[:, :, 1] += 116.779
-    output_matrix[:, :, 2] += 103.939
-    # output_matrix = output_matrix[:, :, ::-1]
+    output_matrix[:, :, 2] += 123.68
+    output_matrix = output_matrix[:, :, ::-1]
     output_matrix = np.clip(output_matrix, 0, 255).astype('uint8')
     return output_matrix

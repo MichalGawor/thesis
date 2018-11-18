@@ -13,8 +13,7 @@ def content_loss(content, alternation):
 def style_loss(style, alternation, height, width):
     G = gram_matrix(style)
     A = gram_matrix(alternation)
-    fraction = 1 / (4 * (3**2) * width * height)
-    return fraction * K.sum(K.square(G - A))
+    return K.sum(K.square(G - A)) / (4.0 * (3.0**2) * (width * height)**2)
 
 
 def total_loss(features, height, width):
