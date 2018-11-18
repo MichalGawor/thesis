@@ -129,9 +129,9 @@ for i in range(iterations):
     # save current generated image
     if i == 5 or i == 7 or i == 9:
         img = deprocess_image(x.copy(), img_height, img_width)  
-        fname = EMAIL_ADDRESS + '_at_iteration_%d.png' % i
+        fname = str(content_weight) + '_' + str(style_weight) + '_at_iteration_%d.png' % i
         save_img(fname, img)
+        print('Image saved as', fname)
     end_time = time.time()
-    print('Image saved as', fname)
     print('Iteration %d completed in %ds' % (i, end_time - start_time))
 
