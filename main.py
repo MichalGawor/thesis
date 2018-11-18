@@ -15,7 +15,7 @@ parser.add_argument('content_image_path', metavar='content', type=str,
                     help='Path to the image containing information to paint.')
 parser.add_argument('style_image_path', metavar='style', type=str,
                     help='Path to the image with style used for painting.')
-parser.add_arguemnt('email', metavar='email', type=str, 
+parser.add_argument('email', metavar='email', type=str, 
                     help='Email address where the result will be sent') 
 parser.add_argument('--iter', type=int, default=10, required=False,
                     help='Number of iterations to run.')
@@ -33,9 +33,9 @@ EMAIL_ADDRESS = args.email
 iterations = args.iter
 
 
-total_variation_weight = args.tv_weight
-style_weight = args.style_weight
-content_weight = args.content_weight
+total_variation_weight = args.tv
+style_weight = args.sw
+content_weight = args.cw
 
 
 # ____________________PREPARE IMAGES____________________

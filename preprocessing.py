@@ -5,7 +5,7 @@ from keras.applications import vgg19
 
 
 def output_image_dimensions(width, height, desired_height):
-    if desired_height > 0 
+    if desired_height > 0: 
         return desired_height, int(width * desired_height / height)
     else:
         return height, width
