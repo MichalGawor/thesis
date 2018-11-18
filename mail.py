@@ -5,8 +5,8 @@ from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 
 
-username = ""
-password = ""
+__model_mail__ = ""
+__password__ = ""
 _from = ""
 _to = ""
 
@@ -14,11 +14,11 @@ def send_mail(image_path):
     image = open(image_path, 'rb').read()
 
     message = MIMEMultipart()
-    message['Subject'] = 'subject'
-    message['From'] = 'e@mail.cc'
-    message['To'] = 'e@mail.cc'
+    message['Subject'] = 'Result of your artifical painting'
+    message['From'] = _from
+    message['To'] = _to
 
-    text = MIMEText("test")
+    text = MIMEText("Hello!\n\n You can find the result of your artifical painting order attached to this email\n\n Best regards,\nArtificalArt")
     message.attach(text)
     image = MIMEImage(image, name=os.path.basename(image_path))
     message.attach(image)

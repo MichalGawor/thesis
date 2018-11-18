@@ -15,6 +15,8 @@ parser.add_argument('content_image_path', metavar='content', type=str,
                     help='Path to the image containing information to paint.')
 parser.add_argument('style_image_path', metavar='style', type=str,
                     help='Path to the image with style used for painting.')
+parser.add_arguemnt('email', metavar='email', type=str, 
+                    help='Email address where the result will be sent') 
 parser.add_argument('--iter', type=int, default=10, required=False,
                     help='Number of iterations to run.')
 parser.add_argument('--content_weight', type=float, default=0.025, required=False,
@@ -27,7 +29,9 @@ parser.add_argument('--tv_weight', type=float, default=1.0, required=False,
 args = parser.parse_args()
 CONTENT_IMAGE_PATH = args.content_image_path
 STYLE_IMAGE_PATH = args.style_image_path
+EMAIL_ADDRESS = args.email
 iterations = args.iter
+
 
 total_variation_weight = args.tv_weight
 style_weight = args.style_weight
@@ -124,8 +128,9 @@ for i in range(iterations):
     print('Current loss value:', min_val)
     # save current generated image
     img = deprocess_image(x.copy(), img_height, img_width)
-    fname = '_at_iteration_%d.png' % i
+    fname = EMAIL_ADDRESS + '_at_iteration_%d.png' % i
     save_img(fname, img)
     end_time = time.time()
     print('Image saved as', fname)
     print('Iteration %d completed in %ds' % (i, end_time - start_time))
+
