@@ -4,8 +4,11 @@ import keras.preprocessing.image as kpi
 from keras.applications import vgg19
 
 
-def output_image_dimensions(width, height, desired_height=400):
-    return desired_height, int(width * desired_height / height)
+def output_image_dimensions(width, height, desired_height):
+    if desired_height > 0 
+        return desired_height, int(width * desired_height / height)
+    else:
+        return height, width
 
 
 def images_to_tensors(content_image, style_image):
@@ -18,7 +21,7 @@ def preprocess_image(image):
     return vgg19.preprocess_input(image)
 
 
-def preprocess_images(content_image_path, style_image_path, desired_height=400):
+def preprocess_images(content_image_path, style_image_path, desired_height=0):
     base_width, base_height = kpi.load_img(content_image_path).size
     height, width = output_image_dimensions(base_width, base_height, desired_height)
     style_image = kpi.load_img(style_image_path, target_size=(height, width))

@@ -10,13 +10,11 @@ from preprocessing import images_to_tensors, preprocess_images, deprocess_image
 from utils import content_loss, style_loss, total_loss
 
 
-parser = argparse.ArgumentParser(description='Neural style transfer with Keras.')
-parser.add_argument('content_image_path', metavar='base', type=str,
-                    help='Path to the image to transform.')
-parser.add_argument('style_image_path', metavar='ref', type=str,
-                    help='Path to the style reference image.')
-parser.add_argument('result_prefix', metavar='res_prefix', type=str,
-                    help='Prefix for the saved results.')
+parser = argparse.ArgumentParser(description='ArtificalArt.')
+parser.add_argument('content_image_path', metavar='content', type=str,
+                    help='Path to the image containing information to paint.')
+parser.add_argument('style_image_path', metavar='style', type=str,
+                    help='Path to the image with style used for painting.')
 parser.add_argument('--iter', type=int, default=10, required=False,
                     help='Number of iterations to run.')
 parser.add_argument('--content_weight', type=float, default=0.025, required=False,
@@ -29,7 +27,6 @@ parser.add_argument('--tv_weight', type=float, default=1.0, required=False,
 args = parser.parse_args()
 CONTENT_IMAGE_PATH = args.content_image_path
 STYLE_IMAGE_PATH = args.style_image_path
-result_prefix = args.result_prefix
 iterations = args.iter
 
 total_variation_weight = args.tv_weight
@@ -127,7 +124,7 @@ for i in range(iterations):
     print('Current loss value:', min_val)
     # save current generated image
     img = deprocess_image(x.copy(), img_height, img_width)
-    fname = result_prefix + '_at_iteration_%d.png' % i
+    fname = '_at_iteration_%d.png' % i
     save_img(fname, img)
     end_time = time.time()
     print('Image saved as', fname)
