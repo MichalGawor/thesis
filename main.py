@@ -38,6 +38,21 @@ content_weight = args.cw
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 
+def output_image_dimensions(width, height, desired_height):
+    if desired_height > 0:
+        return desired_height, int(width * desired_height / height)
+    else:
+        return height, width
+
+
+def image_to_k_variable(image):
+    return K.variable(image)
+
+
+base_width, base_height = kpi.load_img(CONTENT_IMAGE_PATH).size
+img_height, img_width = output_image_dimensions(base_width, base_height, desired_height=400)
+
+
 def gram_matrix(features):
     feature_map = K.batch_flatten(K.permute_dimensions(features, (2, 0, 1)))
     return K.dot(feature_map, K.transpose(feature_map))
@@ -59,33 +74,11 @@ def total_loss(features, height, width):
     return K.sum(K.pow(a + b, 1.25))
 
 
-def output_image_dimensions(width, height, desired_height):
-    if desired_height > 0:
-        return desired_height, int(width * desired_height / height)
-    else:
-        return height, width
-
-
-def images_to_tensors(content_image, style_image):
-    return K.variable(content_image), K.variable(style_image)
-
-
-def preprocess_image(image):
+def preprocess_image(image_path):
+    image = kpi.load_img(image_path, target_size=(img_height, img_width))
     image = kpi.img_to_array(image)
     image = np.expand_dims(image, axis=0)
     return vgg19.preprocess_input(image)
-
-
-def preprocess_images(content_image_path, style_image_path, desired_height=0):
-    base_width, base_height = kpi.load_img(content_image_path).size
-    height, width = output_image_dimensions(base_width, base_height, desired_height)
-    style_image = kpi.load_img(style_image_path, target_size=(height, width))
-    content_image = kpi.load_img(content_image_path, target_size=(height, width))
-
-    content_image = preprocess_image(content_image)
-    style_image = preprocess_image(style_image)
-
-    return content_image, style_image, height, width
 
 
 def deprocess_image(output_matrix, height, width):
@@ -98,17 +91,15 @@ def deprocess_image(output_matrix, height, width):
     return output_matrix
 
 
-
-
-
-
 # ____________________PREPARE IMAGES____________________
-content_image, style_image, img_height, img_width = preprocess_images(CONTENT_IMAGE_PATH, STYLE_IMAGE_PATH, 400)
-content_image_tensor, style_image_tensor = images_to_tensors(content_image, style_image)
+content_image = preprocess_image(CONTENT_IMAGE_PATH)
+style_image = preprocess_image(STYLE_IMAGE_PATH)
 
-alternated_image = K.placeholder((1, img_height, img_width, 3))
+content_image_tensor = image_to_k_variable(content_image)
+style_image_tensor = image_to_k_variable(style_image)
+alternated_image_tensor = K.placeholder((1, img_height, img_width, 3))
 
-input_tensor = K.concatenate([content_image_tensor, style_image_tensor, alternated_image], axis=0)
+input_tensor = K.concatenate([content_image_tensor, style_image_tensor, alternated_image_tensor], axis=0)
 
 
 # ____________________LOAD MODEL____________________
@@ -135,9 +126,9 @@ for layer_name in feature_layers:
     alternation_features = layer_features[2, :, :, :]
     _style_loss = style_loss(style_features, alternation_features, img_height, img_width)
     loss += ((style_weight / len(feature_layers)) * _style_loss)
-loss += (total_variation_weight * total_loss(alternated_image, img_height, img_width))
+loss += (total_variation_weight * total_loss(alternated_image_tensor, img_height, img_width))
 
-grads = K.gradients(loss, alternated_image)
+grads = K.gradients(loss, alternated_image_tensor)
 outputs = [loss]
 
 if isinstance(grads, (list, tuple)):
@@ -145,7 +136,7 @@ if isinstance(grads, (list, tuple)):
 else:
     outputs.append(grads)
 
-loss_function_outputs = K.function([alternated_image], outputs)
+loss_function_outputs = K.function([alternated_image_tensor], outputs)
 
 
 def eval_loss_and_grads(x):
@@ -184,12 +175,14 @@ class Evaluator(object):
 evaluator = Evaluator()
 
 
+X = preprocess_image(CONTENT_IMAGE_PATH)
+
 # ____________________APPLY ALTERNATION____________________
 
 for i in range(iterations):
     print('Start of iteration', i)
     start_time = time.time()
-    x, min_val, info = fmin_l_bfgs_b(evaluator.loss, content_image.flatten(),
+    x, min_val, info = fmin_l_bfgs_b(evaluator.loss, X.flatten(),
                                      fprime=evaluator.grads, maxfun=20)
     print('Current loss value:', min_val)
     # save current generated image
