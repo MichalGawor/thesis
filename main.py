@@ -19,11 +19,11 @@ parser.add_arguemnt('email', metavar='email', type=str,
                     help='Email address where the result will be sent') 
 parser.add_argument('--iter', type=int, default=10, required=False,
                     help='Number of iterations to run.')
-parser.add_argument('--content_weight', type=float, default=0.025, required=False,
+parser.add_argument('--cw', type=float, default=0.025, required=False,
                     help='Content weight.')
-parser.add_argument('--style_weight', type=float, default=1.0, required=False,
+parser.add_argument('--sw', type=float, default=1.0, required=False,
                     help='Style weight.')
-parser.add_argument('--tv_weight', type=float, default=1.0, required=False,
+parser.add_argument('--tv', type=float, default=1.0, required=False,
                     help='Total Variation weight.')
 
 args = parser.parse_args()
@@ -127,9 +127,10 @@ for i in range(iterations):
                                      fprime=evaluator.grads, maxfun=20)
     print('Current loss value:', min_val)
     # save current generated image
-    img = deprocess_image(x.copy(), img_height, img_width)
-    fname = EMAIL_ADDRESS + '_at_iteration_%d.png' % i
-    save_img(fname, img)
+    if i == 5 or i == 7 or i == 9:
+        img = deprocess_image(x.copy(), img_height, img_width)  
+        fname = EMAIL_ADDRESS + '_at_iteration_%d.png' % i
+        save_img(fname, img)
     end_time = time.time()
     print('Image saved as', fname)
     print('Iteration %d completed in %ds' % (i, end_time - start_time))
